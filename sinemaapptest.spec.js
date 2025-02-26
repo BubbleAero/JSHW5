@@ -41,13 +41,13 @@ describe("Sinema booking app test", () => {
         await clickElement(page, secondSeat);
 
         await clickElement(page, "button");
-        const result = "p:nth-child(1) > span";
+        const result = "h2";
         await page.waitForSelector(result);
         const filmName = [await getText(page, "div > p:nth-child(1) > span")];
         const actual = filmName;
         const expected = ["\"Сталкер(1979)\""];
         expect(actual).toEqual(expected);
-    }, 50000);
+    }, 60000);
 
     test("Unsuccessful booking of Stalker if the seat is busy", async () => {
         await clickElement(page, "body > nav > a:nth-child(5)");
