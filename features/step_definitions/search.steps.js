@@ -27,67 +27,102 @@ After(async function () {
 });
 
 Given("пользователь на странице {string}", async function (url) {
-  await this.page.goto(url, { timeout: 60000 });
+  try {
+    await this.page.goto(url, { timeout: 60000, waitUntil: "networkidle2" });
+  } catch (error) {
+    throw new Error(`Не удалось открыть страницу ${url}: ${error}`);
+  }
 });
 
 When("переход на расписание следующего дня", async function () {
   await clickElement(this.page, "a:nth-child(2)");
 });
 
-When("выбор сеанса фильма Сталкер", async function () {
-  await this.page.waitForTimeout(1000);
-  await clickElement(this.page, "body > main > section:nth-child(1) > div.movie-seances__hall > ul > li > a");
-});
-
-When("выбор места в зале 6 ряд 6 место", async function () {
-  buyingSchema = "div.buying-scheme";
-  await this.page.waitForSelector(buyingSchema);
-  place = ".buying-scheme__wrapper > :nth-child(6) > :nth-child(6)";
-  await clickElement(this.page, place);
-  await clickElement(this.page, "button");
-});
-
-Then("результат бронирования фильма {string}", async function (film) {
-  await this.page.waitForSelector("h2");
-  const actual = [await getText(this.page, "div > p:nth-child(1) > span")];
-  expect(actual).to.have.members([film]);
-});
-
 When("переход на расписание через 4 дня от текущей даты", async function () {
   await clickElement(this.page, "a:nth-child(5)");
 });
 
-When("выбор мест в зале 5 ряд 4 и 5 места", async function () {
+When("выбор сеанса фильма Сталкер на 13-00", async function () {
+  await new Promise(r => setTimeout(r, 1000));  
+  await clickElement(this.page, "body > main > section:nth-child(1) > div.movie-seances__hall > ul > li > a");
+});
+
+When("выбор места в зале 1 ряд 6 место", async function () {
   buyingSchema = "div.buying-scheme";
   await this.page.waitForSelector(buyingSchema);
-  let place1 = ".buying-scheme__wrapper > :nth-child(5) > :nth-child(4)";
-  let place2 = ".buying-scheme__wrapper > :nth-child(5) > :nth-child(5)";
-  await clickElement(this.page, place1);
-  await clickElement(this.page, place2);
+  await new Promise(r => setTimeout(r, 500));  
+  place = ".buying-scheme__wrapper > :nth-child(1) > :nth-child(6)";
+  await clickElement(this.page, place);
   await clickElement(this.page, "button");
 });
 
-When("выбор занятого места в зале", async function () {
+When("выбор места в зале 5 ряд 5, 6 места", async function () {
   buyingSchema = "div.buying-scheme";
   await this.page.waitForSelector(buyingSchema);
-  place = "div.buying-scheme__wrapper .buying-scheme__chair_taken";
-  await this.page.waitForSelector(place);
+  const place1 = ".buying-scheme__wrapper > :nth-child(5) > :nth-child(5)";
+  const place2 = ".buying-scheme__wrapper > :nth-child(5) > :nth-child(6)";
+  await clickElement(this.page, place1);
+  await new Promise(r => setTimeout(r, 500));  
+  await clickElement(this.page, place2);
+  await new Promise(r => setTimeout(r, 500));  
+  await clickElement(this.page, "button.acceptin-button");
 });
 
-Then("бронирование невозможно", async function () {
-  const isTaken = await this.page.$eval(place, el => el.classList.contains("buying-scheme__chair_taken"));
-  expect(isTaken).to.be.true;
+Then("результат бронирования", async function () {
+  await new Promise(r => setTimeout(r, 1000));  
+  const result = "h2";
+  await this.page.waitForSelector(result);
+  const actual = await getText(this.page, "div > p:nth-child(1) > span");
+  const expected = "\"Сталкер(1979)\"";
+  expect(actual).to.equal(expected);
+});
 
-  const bookButton = "button";
-  const isDisabled = await this.page.$eval(bookButton, btn => btn.disabled);
+Then("результат бронирования двух билетов", async function () {
+  await new Promise(r => setTimeout(r, 1000));  
+  await this.page.waitForSelector("h2");
+  const actual = await getText(this.page, "div > p:nth-child(1) > span");
+  const expected = "\"Сталкер(1979)\"";
+  console.log(actual);
+  expect(actual).to.equal(expected);
+});
+
+Then("покупка билета", async function () {
+  await new Promise(r => setTimeout(r, 1000));  
+  await this.page.waitForSelector("h2");
+  await clickElement(this.page, "button");
+  const actual = await getText(this.page, "h2");
+  const expected = "Электронный билет";
+  expect(actual).to.equal(expected);
+});
+
+When("переход на главную страницу кинотеатра {string}", async function (url) {
+  try {
+    await this.page.goto(url);
+  } catch (error) {
+    throw new Error(`Не удалось открыть страницу ${url}: ${error}`);
+  }
+});
+
+Then("результат бронирования места, которое занято", async function () {
+  await this.page.waitForSelector(buyingSchema);
+  const isTaken = await this.page.$eval(place, (el) =>
+    el.classList.contains("buying-scheme__chair_taken")
+  );
+  let actual;
+  if (isTaken) {
+    actual = await getText(this.page, "div:nth-child(5) > p:nth-child(5)");
+  } else {
+    await clickElement(this.page, place);
+  }
+  expect(actual.trim()).to.equal("Занято");
+});
+
+When("пользователь выбирает в обед утренний сеанс текущего дня", async function () {
+  this.disabledSession = "a.movie-seances__time.acceptin-button-disabled";
+});
+
+Then("бронирование невозможно на неактивный сеанс", async function () {
+  await this.page.waitForSelector(this.disabledSession);
+  const isDisabled = await this.page.$(this.disabledSession) !== null;
   expect(isDisabled).to.be.true;
 });
-
-When("переход на расписание текущего дня", async function () {
-  await clickElement(this.page, "nav > a.page-nav__day.page-nav__day_today.page-nav__day_chosen");
-});
-
-When("выбор неактивного сеанса", async function () {
-  await this.page.waitForSelector("a.movie-seances__time.acceptin-button-disabled");
-});
-
