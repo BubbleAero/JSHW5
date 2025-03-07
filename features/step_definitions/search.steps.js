@@ -103,19 +103,16 @@ When("переход на главную страницу кинотеатра {
   }
 });
 
-Then("результат бронирования места, которое занято", async function () {
-  await this.page.waitForSelector(buyingSchema);
-  const isTaken = await this.page.$eval(place, (el) =>
-    el.classList.contains("buying-scheme__chair_taken")
-  );
-  let actual;
-  if (isTaken) {
-    actual = await getText(this.page, "div:nth-child(5) > p:nth-child(5)");
-  } else {
-    await clickElement(this.page, place);
-  }
-  expect(actual.trim()).to.equal("Занято");
+Then("проверка, что кнопка Забронировать отключена", async function () {
+  const bookButton = "button.acceptin-button";
+  await this.page.waitForSelector(bookButton, { timeout: 10000 });
+
+  const isDisabled = await this.page.$eval(bookButton, el => el.disabled);
+  expect(isDisabled).to.be.true;
 });
+
+
+
 
 When("пользователь выбирает в обед утренний сеанс текущего дня", async function () {
   this.disabledSession = "a.movie-seances__time.acceptin-button-disabled";
